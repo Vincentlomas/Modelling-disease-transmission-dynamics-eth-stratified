@@ -13,7 +13,6 @@ from assortative_mixing_determination import assortative_optimisation
 from proportionate_mixing_optimisation import proportionate_optimisation
 from SEIR_model_code import run_SEIR_model
 from plot_code import *
-from parameter_variation import epsilon_variation_plot
 
 # Model parameters
 time = 365 # length of time to fit and run parameters
