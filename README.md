@@ -21,7 +21,7 @@ The timeseries_analysis.py file generates plots and stats about case data
 The SA_statistics_calculation.py file generates statistics about the statistical areas
 
 ## Image location
-Images will all be stored in the Images folder
+Images will all be stored in the Images folder and code will generate the folders if needed
 If vaccines are used in the plot, they will be stored in the Vaccine_analysis folder, which is similar to the root folder
 
 If a counterfactual scenario is being plotted, the images will be saved in the Counterfactual scenario folder (over vaccine)
@@ -29,3 +29,6 @@ If a counterfactual scenario is being plotted, the images will be saved in the C
 If applicable they will be stored in the relevant mixing folder
 
 Finally, all folders (save couterfactual) have CAR folders for 4060, 40, 50, and 60, hich is where the images will go if relevant
+
+
+One such example of an image has been put as a text file in the location that an assortative mixing vaccine plot with a CAR of 40% would go
