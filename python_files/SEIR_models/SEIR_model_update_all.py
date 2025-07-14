@@ -8,11 +8,17 @@ Main file that will update all results based on input datasets
 """
 
 from thesis_modules import *
+import os
 from non_parametric_matrix_parameter_optimisation import non_parametric_optimisation
 from assortative_mixing_determination import assortative_optimisation
 from proportionate_mixing_optimisation import proportionate_optimisation
 from SEIR_model_code import run_SEIR_model
 from plot_code import *
+
+# Set working directory to source file location
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 # Model parameters
 time = 365 # length of time to fit and run parameters
@@ -20,13 +26,14 @@ sigma = 1/3 # Rate of disease development
 gamma = 0.25 # Recovery rate
 is_vacc = True # determines if vaccination effects are in the model
 
-is_generate_transmission_rates = False
-is_generate_SEIR_results = False
+is_generate_transmission_rates = True
+is_generate_SEIR_results = True
 is_generate_plots = True
 is_save_generated_plots = True
 
 ### Populations being worked with
 N_vec, N_vec_vacc = model_populations(is_vacc)
+
 # # Old Populations - not for use, but for interpretation of old results
 # mao_N =  802030 # From dataset cases/cases_per_100k
 # pac_N =  390970
