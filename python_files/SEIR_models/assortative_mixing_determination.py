@@ -14,7 +14,6 @@ import os
 import scipy
 import numpy as np
 import matplotlib.pyplot as plt
-from skopt import gp_minimize
 from thesis_modules import *
 
 import warnings # Supress warnings of duplicate function calls during minimisation
@@ -153,4 +152,5 @@ def assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
                     print(f'epsilon: {epsilon}')
                     print(f'error: {d_epsilon}  (want < {tol})')
                     print()
+
 
