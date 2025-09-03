@@ -6,7 +6,7 @@ Created on Mon Jul  7 11:17:02 2025
 
 Main file that will update all results based on input datasets
 """
-
+from cycler import cycler
 from thesis_modules import *
 import os
 from non_parametric_matrix_parameter_optimisation import non_parametric_optimisation
@@ -14,6 +14,7 @@ from assortative_mixing_determination import assortative_optimisation
 from proportionate_mixing_optimisation import proportionate_optimisation
 from SEIR_model_code import run_SEIR_model
 from plot_code import *
+import matplotlib.pyplot as plt
 
 # Set working directory to source file location
 abspath = os.path.abspath(__file__)
@@ -26,8 +27,8 @@ sigma = 1/3 # Rate of disease development
 gamma = 0.25 # Recovery rate
 is_vacc = True # determines if vaccination effects are in the model
 
-is_generate_transmission_rates = True
-is_generate_SEIR_results = True
+is_generate_transmission_rates = False
+is_generate_SEIR_results = False
 is_generate_plots = True
 is_save_generated_plots = True
 
@@ -44,6 +45,10 @@ N_vec, N_vec_vacc = model_populations(is_vacc)
 #          [pac_N],
 #          [asi_N],
 #          [oth_N]])
+
+
+# Set colours used for plotting
+plt.rc('axes', prop_cycle=cycler(color=['#12436D', '#28A197', '#801650', '#F46A25']))
 
 if is_generate_transmission_rates:
     print('Proportionate optimisation')
@@ -113,7 +118,7 @@ if is_generate_plots:
                    is_SA1=is_SA1,is_prop=is_prop, is_non_parametric=is_non_parametric,
                    is_vacc=is_vacc,counterfactual=counterfactual)
     
-    ### Comparrison of contact rates
+    ### Comparrison of contact rates - Assortative vs non parametric
     contact_vs_contact_rates(N_vec, N_vec_vacc,is_SA1s = [False,False],
                              is_statsnzs=[False,False],
                              is_vacc=is_vacc,
@@ -121,7 +126,7 @@ if is_generate_plots:
                              is_non_parametrics = [False,True],
                              titles=["Assortative","Non-parametric"]) # transmission rates will follow
     if is_save_generated_plots:
-        save_image('transmission_rate_and_reproduction_number',CAR=50,is_vacc=is_vacc,is_prop=False,is_non_parametric=True,is_SA1=is_SA1,is_statsnz=is_SA1,counterfactual=-1,file_format = 'png')
+        save_image('transmission_rate_and_reproduction_number',CAR=None,is_vacc=is_vacc,is_prop=False,is_non_parametric=True,is_SA1=is_SA1,is_statsnz=is_SA1,counterfactual=-1,file_format = 'png')
     
     ### Heat plots
     # Comparing all three mixing methods
