@@ -328,7 +328,7 @@ def save_epsilon_a_vector(epsilon1,a1,CAR,is_vacc,is_prop,is_non_parametric,
         path = "transmission_rates/"
     
     if not os.path.exists(path): # if path doesn't exist, create file and warn
-        print('Path did not exist, created')
+        print(f'Path did not exist, created path: {path}')
         os.makedirs(path)
     if is_prop and is_non_parametric:
         print('Cannot be both proportionate mixing and non-parametric')
@@ -542,4 +542,3 @@ def SEIR_model(t,SEIR, beta, sigma, gamma, imm_decay_rate=0):
     dR =   I_to_R - R_to_S
     dIn =  E_to_I
     return np.concatenate([dS,dSv,dE,dI,dR,dIn])
-
