@@ -11,7 +11,6 @@ import scipy
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-import os
 import seaborn as sns
 from thesis_modules import *
 
@@ -140,7 +139,7 @@ def heat_map(matrices,titles,scaling=0,create_fig=True,labels=["Māo","Pac","Asi
                     axs.set_title(f'{titles} (10$^{{-{scaling}}}$)')
         
 def barplot(axes,bar_groups,y_title,x_title = 'CAR (%)',labels='ethnic',x_ticks = 'CAR',has_legend=True,is_big_text=False,
-            is_maroon=False):
+            is_solid_coloured=False):
     '''bar_groups: a tuple or list of groups of barcharts
     y_title: title of y-axis
     labels: labels for each bar in bar group
@@ -161,7 +160,7 @@ def barplot(axes,bar_groups,y_title,x_title = 'CAR (%)',labels='ethnic',x_ticks 
     # creating the bar plot
     if is_big_text:
         matplotlib.rcParams.update({'font.size': 14})
-    if is_maroon and len(bar_groups)==1:
+    if is_solid_coloured and len(bar_groups)==1:
         a = bar_groups[0]
         r = np.arange(len(bar_groups[0]))
         bar_width = 0.8
@@ -254,7 +253,7 @@ def SEIR_plot(N_vec,CAR,is_vacc,is_prop,is_non_parametric,is_SA1,is_statsnz,coun
             if is_per_capita:
                 per_capita_plot(ax[j,i],ts,np.array([S[2*j+i]+Sv[2*j+i],E[2*j+i],I[2*j+i],R[2*j+i]]), CAR,
                                 N_vec[2*j+i,0],asymptote=['Maori','Pacific','Asian','European'][2*j+i],
-                                per_x_pop = 100000,names="ethnic")
+                                per_x_pop = 100000,names="SEIR")
                 ax[j,i].set_xlim(0,max(ts))
                 ax[j,i].set_ylabel('Population (per 100k)')
             else:
@@ -295,7 +294,7 @@ def contact_vs_reproduction_number(N_vec, N_vec_vacc,is_SA1,is_statsnz,
     
     # Plot reproduction number
     barplot(ax[1],np.array([reprod_numbers]).T,
-            "Initial reproduction number",is_maroon=True, x_ticks='CAR')
+            "Initial reproduction number",is_solid_coloured=True, x_ticks='CAR')
     ax[1].set_title('b) Initial reproduction numbers')
     ax[0].set_title('a) Transmission rates')
     ax[1].tick_params(labelsize=10)
@@ -489,11 +488,11 @@ def epsilon_variation_plot(CAR,N_vec,is_vacc,N_vec_vacc, time, sigma,gamma,is_sa
     
     if is_vacc:
         is_vacc_str = ''
-        filename = f'vaccine_epsilon_variation_CAR{CAR}.pdf'
+        filename = f'vaccine_epsilon_variation_CAR{CAR}.png'
         file_location = f"../Images/Vaccine_analysis/"
     else:
         is_vacc_str = ''
-        filename = f'epsilon_variation_CAR{CAR}.pdf'
+        filename = f'epsilon_variation_CAR{CAR}.png'
         file_location = f"../Images/"
     
     if is_save_generated_plots:
