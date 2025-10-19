@@ -1,162 +1,155 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jul  7 11:17:02 2025
+Created on Thu May 15 11:31:19 2025
 
 @author: Vincent Lomas
-
-Main file that will update all results based on input datasets
 """
-from cycler import cycler
+
 from thesis_modules import *
+import numpy as np
 import os
-from non_parametric_matrix_parameter_optimisation import non_parametric_optimisation
-from assortative_mixing_determination import assortative_optimisation
-from proportionate_mixing_optimisation import proportionate_optimisation
-from SEIR_model_code import run_SEIR_model
-from plot_code import *
-import matplotlib.pyplot as plt
-
-# Set working directory to source file location
-abspath = os.path.abspath(__file__)
-dname = os.path.dirname(abspath)
-os.chdir(dname)
-
-# Model parameters
-time = 365 # length of time to fit and run parameters
-sigma = 1/3 # Rate of disease development
-gamma = 0.25 # Recovery rate
-is_vacc = True # determines if vaccination effects are in the model
-
-is_generate_transmission_rates = False
-is_generate_SEIR_results = False
-is_generate_plots = True
-is_save_generated_plots = True
-
-### Populations being worked with
-N_vec, N_vec_vacc = model_populations(is_vacc)
-
-# # Old Populations - not for use, but for interpretation of old results
-# mao_N =  802030 # From dataset cases/cases_per_100k
-# pac_N =  390970
-# asi_N =  834055
-# oth_N = 3167397
-# tot_N = mao_N + asi_N + pac_N + oth_N
-# N_vec = np.array([[mao_N],
-#          [pac_N],
-#          [asi_N],
-#          [oth_N]])
+import scipy
 
 
-# Set colours used for plotting
-plt.rc('axes', prop_cycle=cycler(color=['#12436D', '#28A197', '#801650', '#F46A25']))
+def save_SEIR_results(SEIR,times,CAR,is_vacc,is_prop,is_non_parametric,
+                          counterfactual, is_SA1=None,is_statsnz=None,is_old = False):
+    '''saves the results from an SEIR model run'''
+    
+    save_vector = np.zeros([len(SEIR)+1,len(times)])
+    save_vector[0,:] = times
+    save_vector[1:,:] = SEIR
+    
+    if is_old:
+        path = "SEIR_model_results/old_results/"
+    else:
+        path = "SEIR_model_results/"
+    
+    if not os.path.exists(path): # if path doesn't exist, create file and warn
+        print('Path did not exist, created')
+        os.makedirs(path)
+    if is_prop and is_non_parametric:
+        print('Cannot be both proportionate mixing and non-parametric')
+    elif (is_SA1 == None or is_statsnz == None) and not is_prop:
+        print('Define is_SA1 and is_statsnz when not saving proportionate mixing')
+    else:
+        if is_old:
+            save_str0 = f'{path}old_SEIR_'
+        else:
+            save_str0= f'{path}SEIR_'
+        if is_vacc:
+            save_str1 = save_str0 + 'vaccine_'
+        else:
+            save_str1 = save_str0
+        if is_prop:
+            save_str2 = save_str1 + f'prop_mix_CAR{CAR}.npy'
+            np.save(save_str2, save_vector)
+        else:
+            if is_non_parametric:
+                save_str2 = save_str1 + 'non-parametric_'
+            else:
+                save_str2 = save_str1 + 'assortative_'
+            if is_statsnz:
+                save_str3 = save_str2 + 'total_'
+                if is_SA1:
+                    save_str4 = save_str3 + 'SA1_'
+                else:
+                    save_str4 = save_str3 + 'SA2_'
+            else:
+                save_str4 = save_str2 + 'prioritised_SA2_'
+            if counterfactual == -1:
+                save_str5 = save_str4 + f"CAR{CAR}.npy"
+            else:
+                save_str5 = save_str4 + f"CAR{CAR}_counterfactual{counterfactual}.npy"
+            np.save(save_str5, save_vector)
 
-if is_generate_transmission_rates:
-    print('Proportionate optimisation')
-    # Fit proportionate mixing transmission rates
-    proportionate_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma)
-    
-    print('Assortative optimisation')
-    # Fit assortative mixing transmission rates
-    assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma)
-    
-    print('non-parametric optimisation')
-    # Fit non-parametric mixing transmission rates
-    non_parametric_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma)
 
-if is_generate_SEIR_results:
+
+def run_SEIR_model(N_vec, N_vec_vacc, N_vec_vacc_boosted, is_vacc, time, sigma, gamma, is_prop, is_non_parametric, is_SA1 = None, is_statsnz = None, counter_factual_scen = -1, CARs = ['4060',40,50,60]):
     
-    # Proportionate mixing
-    run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop=True, is_non_parametric=False)
-    
-    # Assortative mixing
-    for is_SA1, is_statsnz in [(True,True),(False,True),(True,True)]:
-        run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop=False,
-                       is_non_parametric=False, is_SA1 = is_SA1, is_statsnz = is_statsnz)
-        
-    # Non-parametric mixing
-    run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop=False,
-                   is_non_parametric=True, is_SA1 = False, is_statsnz = False)
-    
-    
-    ### counterfactual
-    # -1 is no scenario, 0 is equal vaccine, 1 is no vaccines, 2 is SEIRS model
-    # 3 is no assortativity
-    # 4 is setting all contact rates to weighted average contact rate
-    # 5 is setting all vaccination rates to weighted average vaccine rate
-    for counterfactual in [0,3,4,5]:
-        for is_SA1, is_statsnz in [(True,True),(False,True),(True,True)]:
-            run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop=False,
-                           is_non_parametric=False, is_SA1 = is_SA1, is_statsnz = is_statsnz, counter_factual_scen = counterfactual)
-    for counterfactual in [1,2]:
-        run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop=False,
-                       is_non_parametric=True, is_SA1 = False, is_statsnz = False, counter_factual_scen = counterfactual)
-        
-if is_generate_plots:
-    CAR = 50
-    is_SA1 = False
-    is_statsnz = False
-    
-    ### SEIR plot of each ethnicity
-    is_prop = True
-    is_non_parametric = False
-    counterfactual = -1
-    SEIR_plot(N_vec,CAR,is_vacc,is_prop,is_non_parametric,is_SA1,is_statsnz,counterfactual)
-    if is_save_generated_plots:
-        save_image('per_capita_SEIR_plots',CAR,is_statsnz, is_SA1,is_prop, is_non_parametric, is_vacc,counterfactual,file_format = 'png')
-    
-    
-    ### Comparrison of contact rates and initial reproduction number
-    is_prop = True
-    is_non_parametric = False
-    counterfactual = -1
-    is_SA1 = None
-    is_statsnz = None
-    contact_vs_reproduction_number(N_vec, N_vec_vacc,is_SA1,is_statsnz,
-                                       is_vacc,is_prop,is_non_parametric, gamma=gamma)
-    if is_save_generated_plots:
-        save_image('transmission_rate_and_reproduction_number',CAR=None,is_statsnz=is_statsnz,
-                   is_SA1=is_SA1,is_prop=is_prop, is_non_parametric=is_non_parametric,
-                   is_vacc=is_vacc,counterfactual=counterfactual)
-    
-    ### Comparrison of contact rates - Assortative vs non parametric
-    contact_vs_contact_rates(N_vec, N_vec_vacc,is_SA1s = [False,False],
-                             is_statsnzs=[False,False],
-                             is_vacc=is_vacc,
-                             is_props = [False,False],
-                             is_non_parametrics = [False,True],
-                             titles=["Assortative","Non-parametric"]) # transmission rates will follow
-    if is_save_generated_plots:
-        save_image('transmission_rate_and_reproduction_number',CAR=None,is_vacc=is_vacc,is_prop=False,is_non_parametric=True,is_SA1=is_SA1,is_statsnz=is_SA1,counterfactual=-1,file_format = 'png')
-    
-    ### Heat plots
-    # Comparing all three mixing methods
-    beta_prop = load_beta(N_vec,CAR,is_vacc,is_prop=True,is_non_parametric=False)
-    beta_assort = load_beta(N_vec,CAR,is_vacc,is_prop=False,is_non_parametric=False,is_SA1=is_SA1,is_statsnz=is_statsnz)
-    beta_non_para = load_beta(N_vec,CAR,is_vacc,is_prop=False,is_non_parametric=True,is_SA1=is_SA1,is_statsnz=is_SA1)
-    heat_map((beta_prop*N_vec,beta_assort*N_vec,beta_non_para*N_vec,beta_prop,beta_assort,beta_non_para),['Proportionate','Assortative','Non-parametric','Per capita proportionate','Per capita assortative','Per capita non-parametric'],
-              scaling=[0,0,0,7,7,7],create_fig=True,labels=["Māo","Pac","Asi","Oth"],max_comp='rowwise')
-    if is_save_generated_plots:
-        save_image('heatplot_transmission_proportionate_vs_assortative_vs',CAR=50,is_vacc=True,is_prop=False,is_non_parametric=True,is_SA1=is_SA1,is_statsnz=is_SA1,counterfactual=-1,file_format = 'png')
-    
-    # Comparing total measure fits of assortative mixing
-    is_statsnz = True
-    beta_SA1 = load_beta(N_vec,CAR,is_vacc,is_prop=False,is_non_parametric=False,is_SA1=True,is_statsnz=is_statsnz)
-    beta_SA2 = load_beta(N_vec,CAR,is_vacc,is_prop=False,is_non_parametric=False,is_SA1=False,is_statsnz=is_statsnz)
-    heat_map((beta_SA1*N_vec,beta_SA2*N_vec,beta_SA1,beta_SA2),['SA1','SA2','Per capita SA1','Per capita SA2'],
-              scaling=[0,0,7,7],create_fig=True,labels=["Māo","Pac","Asi","Oth"],max_comp='rowwise')
-    if is_save_generated_plots:
-        save_image('heatplot_transmission_SA1_vs_SA2',CAR=50,is_vacc=True,is_prop=False,is_non_parametric=False,is_SA1=None,is_statsnz=is_SA1,counterfactual=-1,file_format = 'png')
-    
-    
-    ### Quantification analysis
-    CAR = 50
-    for is_SA1, is_statsnz in [(True,True),(False,True),(False,False)]:
-        quantification_plot(N_vec, CAR, is_SA1, is_statsnz)
-        save_image('quantification_analysis', CAR, is_statsnz, is_SA1, is_prop=False,is_non_parametric=False, is_vacc=True, counterfactual=3,file_format='png')
-        
-        
-        
-    ### Epsilon variation
-    epsilon_variation_plot(CAR,N_vec,is_vacc,N_vec_vacc, round(1.5*time), sigma,gamma,is_save_generated_plots)
-    
-    
+    if (counter_factual_scen in [0,1,5]) and not is_vacc:
+        counter_factual_scen = -1
+        print(f'Warning is_SA1: {is_SA1}, is_statsnz: {is_statsnz} -- changed counterfactual scenario to -1')
+    elif (is_prop or is_non_parametric) and (counter_factual_scen == 3):
+        counter_factual_scen = -1
+        print(f'Warning is_SA1: {is_SA1}, is_statsnz: {is_statsnz} -- changed counterfactual scenario to -1')
+    elif counter_factual_scen == 0:
+        # Manually setting equal to highest rate (european)
+        N_vec_vacc = N_vec * (N_vec_vacc[-1,0] / N_vec[-1,0])
+        N_vec_vacc_boosted = N_vec * (N_vec_vacc_boosted[-1,0] / N_vec[-1,0])
+    elif counter_factual_scen == 1:
+        # Setting to zero
+        N_vec_vacc = np.zeros([4,1])
+        N_vec_vacc_boosted = np.zeros([4,1])
+    elif counter_factual_scen == 5:
+        N_vec_vacc = sum(N_vec_vacc)/sum(N_vec) * N_vec
+        N_vec_vacc_boosted = sum(N_vec_vacc_boosted)/sum(N_vec) * N_vec
+
+    ### iterate over all case ascertainment rates
+    for CAR in CARs:
+    # Isolate cases if needed, if all cases to be run set to if True:
+        if (counter_factual_scen == -1) or (is_vacc and CAR ==50):
+            epsilon, a = epsilon_a_vector(CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric,is_old = False)
+            
+            if counter_factual_scen == 3:
+                epsilon = 0
+            elif counter_factual_scen ==4:
+                a = np.full((4,1),sum(a*N_vec)/sum(N_vec))
+            
+            # Grab attack rates
+            attack_rates = return_attack_rates(CAR)
+                
+            ### Assign beta, the transmission matrix
+            if is_non_parametric:
+                # Construct matrix using SA
+                eth_data = SA_import(is_SA1, is_statsnz)
+                beta = non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data)
+            else:
+                # Construct using equation
+                beta = (1-epsilon)*(a @ a.T)/(a.T @ N_vec) + epsilon * np.diag(a[:,0] / N_vec[:,0])
+             
+            ### initial group population distributions
+            # 0.01% initial expoure for each group
+            S, Sv, Svb, E, Ev, Evb, I, Iv, Ivb, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc, N_vec_vacc_boosted)
+                
+            SEIR_0 = np.concatenate([S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R,In])
+            
+            if counter_factual_scen == 2: # SEIRS model
+                time_SEIRS = 4000 # length of time to run simulation (days)
+                solution = scipy.integrate.solve_ivp(SEIR_model,[0,time_SEIRS],SEIR_0,args=(beta,sigma,gamma, 1/365),t_eval=np.arange(0,time+1))
+            else:
+                if counter_factual_scen == -1:
+                    time = 365 # length of time to run simulation (days)
+                else: # Run counter factuals for longer as some epidemics run longer than a year
+                    time =365*2
+                solution = scipy.integrate.solve_ivp(SEIR_model,[0,time],SEIR_0,args=(beta,sigma,gamma),t_eval=np.arange(0,time+1))
+            
+            
+            # Define an acceptable error in attack rate for alerting if something is wrong
+            tolerable_err = 0.001
+            # Checking if the attack rates (in percentage units) are above the error threshold
+            above_tol = abs(100*(N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1] - solution.y[8:12,-1])/(N_vec.flatten()) - attack_rates.flatten()) > tolerable_err
+            if np.any(above_tol) and counter_factual_scen == -1:
+                print("-"*90)
+                print(f"Warning CAR{CAR}, is_SA1: {is_SA1}, is_statsnz: {is_statsnz}, is above threshold")
+                print("-"*90)
+            
+            if is_prop:
+                save_SEIR_results(solution.y,solution.t,CAR,is_vacc,is_prop,is_non_parametric,
+                                      counter_factual_scen, is_SA1=None,is_statsnz=None)
+            else:
+                save_SEIR_results(solution.y,solution.t,CAR,is_vacc,is_prop,is_non_parametric,
+                                      counter_factual_scen, is_SA1,is_statsnz)
+            
+            if is_prop:
+                print_statement = 'Prop mix: '
+            elif is_non_parametric:
+                print_statement = 'Non-para: '
+            else:
+                print_statement = 'Assort : '
+            
+            if counter_factual_scen == -1:
+                print_statement_cf = ''
+            else:
+                print_statement_cf = f'counter factual: {counter_factual_scen}, '
+            
+            print(f"{print_statement}CAR{CAR}, is_SA1: {is_SA1}, is_statsnz: {is_statsnz}, {print_statement_cf}complete")
