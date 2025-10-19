@@ -46,7 +46,7 @@ def model_simulation_assortative(a0, CAR, SEIR_0, N_vec, time, sigma,gamma, epsi
     
     
     attack_rates = return_attack_rates(CAR)
-    attack_rate_percent_diff = attack_rates.flatten() - 100 * (N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1]) / N_vec.flatten()
+    attack_rate_percent_diff = attack_rates.flatten() - 100 * (N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1] - solution.y[8:12,-1]) / N_vec.flatten()
     
     return attack_rate_percent_diff
 
@@ -65,9 +65,9 @@ def model_simulation_assortative(a0, CAR, SEIR_0, N_vec, time, sigma,gamma, epsi
 #          [asi_N],
 #          [oth_N]])
 
-def assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
+def assortative_optimisation(N_vec, N_vec_vacc, N_vec_vacc_boosted, is_vacc, time, sigma, gamma):
     tol = 10**-6
-    max_count = 30
+    max_count = 50
     
     for is_SA1, is_statsnz in [(True,True),(False,True),(False,False)]:
             
@@ -106,7 +106,7 @@ def assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
                     d_epsilon = 1
                     
                     # Set initial population distributions
-                    S, Sv, E, I, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc)
+                    S, Sv, Svb, E, Ev, Evb, I, Iv, Ivb, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc,N_vec_vacc_boosted)
                     
                     count = 0
                     
@@ -132,7 +132,7 @@ def assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
                         # optimise transmission rates
                         sol = scipy.optimize.least_squares(model_simulation_assortative,
                                                            a.flatten(),
-                                                           bounds = (0.1,2), args=(CAR, np.concatenate([S,Sv,E,I,R,In]), N_vec, time, sigma,gamma,epsilon))
+                                                           bounds = (0.1,2), args=(CAR, np.concatenate([S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R,In]), N_vec, time, sigma,gamma,epsilon))
                         a = np.array([sol.x]).T
                         
                         # Calculate difference in epsilon values
@@ -152,5 +152,4 @@ def assortative_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
                     print(f'epsilon: {epsilon}')
                     print(f'error: {d_epsilon}  (want < {tol})')
                     print()
-
 
