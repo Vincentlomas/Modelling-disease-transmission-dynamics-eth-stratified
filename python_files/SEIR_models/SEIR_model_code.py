@@ -64,7 +64,7 @@ def save_SEIR_results(SEIR,times,CAR,is_vacc,is_prop,is_non_parametric,
 
 
 
-def run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop, is_non_parametric, is_SA1 = None, is_statsnz = None, counter_factual_scen = -1, CARs = ['4060',40,50,60]):
+def run_SEIR_model(N_vec, N_vec_vacc, N_vec_vacc_boosted, is_vacc, time, sigma, gamma, is_prop, is_non_parametric, is_SA1 = None, is_statsnz = None, counter_factual_scen = -1, CARs = ['4060',40,50,60]):
     
     if (counter_factual_scen in [0,1,5]) and not is_vacc:
         counter_factual_scen = -1
@@ -75,14 +75,14 @@ def run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop, is_n
     elif counter_factual_scen == 0:
         # Manually setting equal to highest rate (european)
         N_vec_vacc = N_vec * (N_vec_vacc[-1,0] / N_vec[-1,0])
-        mao_N_vacc, pac_N_vacc, asi_N_vacc, oth_N_vacc = N_vec_vacc.flatten()
+        N_vec_vacc_boosted = N_vec * (N_vec_vacc_boosted[-1,0] / N_vec[-1,0])
     elif counter_factual_scen == 1:
         # Setting to zero
         N_vec_vacc = np.zeros([4,1])
-        mao_N_vacc, pac_N_vacc, asi_N_vacc, oth_N_vacc = N_vec_vacc.flatten()
+        N_vec_vacc_boosted = np.zeros([4,1])
     elif counter_factual_scen == 5:
         N_vec_vacc = sum(N_vec_vacc)/sum(N_vec) * N_vec
-        mao_N_vacc, pac_N_vacc, asi_N_vacc, oth_N_vacc = N_vec_vacc.flatten()
+        N_vec_vacc_boosted = sum(N_vec_vacc_boosted)/sum(N_vec) * N_vec
 
     ### iterate over all case ascertainment rates
     for CAR in CARs:
@@ -109,9 +109,9 @@ def run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop, is_n
              
             ### initial group population distributions
             # 0.01% initial expoure for each group
-            S, Sv, E, I, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc)
+            S, Sv, Svb, E, Ev, Evb, I, Iv, Ivb, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc, N_vec_vacc_boosted)
                 
-            SEIR_0 = np.concatenate([S,Sv,E,I,R,In])
+            SEIR_0 = np.concatenate([S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R,In])
             
             if counter_factual_scen == 2: # SEIRS model
                 time_SEIRS = 4000 # length of time to run simulation (days)
@@ -127,7 +127,7 @@ def run_SEIR_model(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma, is_prop, is_n
             # Define an acceptable error in attack rate for alerting if something is wrong
             tolerable_err = 0.001
             # Checking if the attack rates (in percentage units) are above the error threshold
-            above_tol = abs(100*(N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1])/(N_vec.flatten()) - attack_rates.flatten()) > tolerable_err
+            above_tol = abs(100*(N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1] - solution.y[8:12,-1])/(N_vec.flatten()) - attack_rates.flatten()) > tolerable_err
             if np.any(above_tol) and counter_factual_scen == -1:
                 print("-"*90)
                 print(f"Warning CAR{CAR}, is_SA1: {is_SA1}, is_statsnz: {is_statsnz}, is above threshold")
