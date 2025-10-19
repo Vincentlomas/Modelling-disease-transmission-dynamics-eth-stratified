@@ -10,6 +10,18 @@ A Python script to do statistical analysis and plots of Covid Timeseries data
 import numpy as np 
 import pandas as pd 
 import matplotlib.pyplot as plt
+import matplotlib.pylab as pylab
+
+params = {'legend.fontsize': 'x-large',
+         'axes.labelsize': 'x-large',
+         'axes.titlesize':'x-large',
+         'xtick.labelsize':'x-large',
+         'ytick.labelsize':'x-large',
+         'axes.titleweight': 'bold',
+         'figure.titleweight': 'bold'}
+pylab.rcParams.update(params)
+
+colours=['#12436D', '#28A197', '#801650', '#F46A25']
 
 ### Key_word is admission, case, or death to get respective information
 keyword = "case"
@@ -87,24 +99,24 @@ oth_N = 3167397
 plt.rcParams.update({'font.size': 14})
 fig, axs = plt.subplots(1,2,figsize=(6.8*2,4.8))
 
-axs[0].plot(x1, y1, label = "Maori")
-axs[0].plot(x2, y2, label = "Pacific Peoples")
-axs[0].plot(x3, y3, label = "Asian")
-axs[0].plot(x4, y4, label = "European/other")
+axs[0].plot(x1, y1, label = "Maori",color=colours[0])
+axs[0].plot(x2, y2, label = "Pacific Peoples",color=colours[1])
+axs[0].plot(x3, y3, label = "Asian",color=colours[2])
+axs[0].plot(x4, y4, label = "European/other",color=colours[3])
 axs[0].set_xlabel("Date")
-axs[0].set_ylabel(f"7 day MA of daily {keyword}s")
+axs[0].set_ylabel(f"daily {keyword}s MA")
 axs[0].tick_params(labelrotation=-15,labelsize=10)
 axs[0].set_title('a) Confirmed cases plot')
 axs[0].legend(prop={'size': 10})
 # plt.savefig(f"../Images/Raw_data_{keyword}s_7dayMA_COVID_start-2023.pdf",dpi=300)
 # plt.show()
 
-axs[1].plot(x1, y1 / mao_N * 100000, label = "Maori")
-axs[1].plot(x2, y2 / pac_N * 100000, label = "Pacific Peoples")
-axs[1].plot(x3, y3 / asi_N * 100000, label = "Asian")
-axs[1].plot(x4, y4 / oth_N * 100000, label = "European/other")
+axs[1].plot(x1, y1 / mao_N * 100000, label = "Maori",color=colours[0])
+axs[1].plot(x2, y2 / pac_N * 100000, label = "Pacific Peoples",color=colours[1])
+axs[1].plot(x3, y3 / asi_N * 100000, label = "Asian",color=colours[2])
+axs[1].plot(x4, y4 / oth_N * 100000, label = "European/other",color=colours[3])
 axs[1].set_xlabel("Date")
-axs[1].set_ylabel(f"7 day MA of daily {keyword}s per 100k")
+axs[1].set_ylabel(f"daily {keyword}s MA (per 100k)")
 axs[1].tick_params(labelrotation=-15,labelsize=10)
 axs[1].legend(prop={'size': 10})
 axs[1].set_title('b) Per capita confirmed cases plot')
