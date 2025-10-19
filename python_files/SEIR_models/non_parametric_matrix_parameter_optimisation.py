@@ -23,17 +23,17 @@ def model_simulation_non_parametric(a0, CAR, SEIR_0, N_vec, time, sigma,gamma, e
     solution = scipy.integrate.solve_ivp(SEIR_model,[0,time],SEIR_0,args=(beta,sigma,gamma))
     
     attack_rates = return_attack_rates(CAR)
-    attack_rate_percent_diff = attack_rates.flatten() - 100 * (N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1]) / N_vec.flatten()
+    attack_rate_percent_diff = attack_rates.flatten() - 100 * (N_vec.flatten() - solution.y[0:4,-1] - solution.y[4:8,-1] - solution.y[8:12,-1]) / N_vec.flatten()
     
     return attack_rate_percent_diff
 
 
 
-def non_parametric_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
+def non_parametric_optimisation(N_vec, N_vec_vacc, N_vec_vacc_boosted, is_vacc, time, sigma, gamma):
 
     ### initial group population distributions
     # 0.01% initial expoure for each group
-    S, Sv, E, I, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc)
+    S, Sv, Svb, E, Ev, Evb, I, Iv, Ivb, R, In = initial_group_populations(N_vec,is_vacc,N_vec_vacc, N_vec_vacc_boosted)
     
     # loop over both statisticals areas (if required)
     # for is_SA1 in [False]: #(False,True):
@@ -69,14 +69,14 @@ def non_parametric_optimisation(N_vec, N_vec_vacc, is_vacc, time, sigma, gamma):
             #     # Runs if transmission rates are negaive or error is too large
             sol = scipy.optimize.least_squares(model_simulation_non_parametric,
                                                (0.3,0.5,0.4,1),
-                                               bounds = (0.1,2), args = (CAR, np.concatenate([S,Sv,E,I,R,In]), N_vec, time,sigma,gamma, eth_data))
+                                               bounds = (0.1,2), args = (CAR, np.concatenate([S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R,In]), N_vec, time,sigma,gamma, eth_data))
             result = sol.x
                 
             
             a = np.array([result]).T
             
             
-            err = np.sum(abs(np.array(model_simulation_non_parametric(a.flatten(), CAR, np.concatenate([S,Sv,E,I,R,In]),
+            err = np.sum(abs(np.array(model_simulation_non_parametric(a.flatten(), CAR, np.concatenate([S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R,In]),
                                                        N_vec, time, sigma,gamma, eth_data))))
             
             
