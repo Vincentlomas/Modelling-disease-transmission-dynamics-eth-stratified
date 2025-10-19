@@ -100,10 +100,11 @@ def filename_suffix(CAR,is_SA1,is_statsnz,is_non_parametric,is_prop,counterfactu
 
 
 
-def initial_group_populations(pop_vec,is_vacc,pop_vec_vacc=np.array([]),initial_exposed=0.0001,initial_infected=0,initial_recovered=0):
+def initial_group_populations(pop_vec,is_vacc,pop_vec_vacc=np.array([]), pop_vec_vacc_boosted=np.array([]),initial_exposed=0.0001,initial_infected=0,initial_recovered=0):
     '''takes as input:
         pop_vec: a vector of total populations of different ethnicities
         pop_vec_vacc: a vector of vaccinated populations of different ethnicities
+        pop_vec_vacc: a vector of populations of different ethnicities that recieved a boosted shot
         initial_exposed: the proportion of people initially exposed to the disease
         initial_infected: the proportion of people initially infected with the disease
         initial_recovered: the proportion of people initially recovered from the disease
@@ -112,23 +113,26 @@ def initial_group_populations(pop_vec,is_vacc,pop_vec_vacc=np.array([]),initial_
     # Convert any 2D arrays to 1D
     pop_vec = pop_vec.flatten()
     pop_vec_vacc = pop_vec_vacc.flatten()
+    pop_vec_vacc_boosted = pop_vec_vacc_boosted.flatten()
     
     initial_s = 1 - initial_exposed - initial_infected - initial_recovered
     
     if is_vacc:
-        Sv = pop_vec_vacc
-        S = initial_s*pop_vec - Sv
-        E = initial_exposed*pop_vec
-        I = initial_infected*pop_vec
-        R = initial_recovered*pop_vec
+        Svb = pop_vec_vacc_boosted
+        Sv = pop_vec_vacc - Svb
     else:
-        S = initial_s*pop_vec
         Sv = np.zeros(4)
-        E = initial_exposed*pop_vec
-        I = initial_infected*pop_vec
-        R = initial_recovered*pop_vec
+        Svb = np.zeros(4)
+    S = initial_s*pop_vec - Sv - Svb
+    E = initial_exposed*pop_vec
+    Ev = np.zeros(4)
+    Evb = np.zeros(4)
+    I = initial_infected*pop_vec
+    Iv = np.zeros(4)
+    Ivb = np.zeros(4)
+    R = initial_recovered*pop_vec
     In = np.zeros(4)
-    return S,Sv,E,I,R, In
+    return S,Sv,Svb,E, Ev, Evb, I, Iv, Ivb,R, In
 
 
 
@@ -150,6 +154,7 @@ def load_SEIR_results(CAR,is_vacc,is_prop,is_non_parametric,
         ts: a 1d array of times
         S: a 2d array of shape (4,len(ts)) of susceptible unvaccinated people
         Sv: a 2d array of shape (4,len(ts)) of susceptible vaccinated people
+        Sv: a 2d array of shape (4,len(ts)) of susceptible vaccinated and boosted people
         E: a 2d array of shape (4,len(ts)) of exposed people
         I: a 2d array of shape (4,len(ts)) of infectious people
         R: a 2d array of shape (4,len(ts)) of recovered people
@@ -199,11 +204,16 @@ def load_SEIR_results(CAR,is_vacc,is_prop,is_non_parametric,
         ts = loaded_array[0,:]
         S = loaded_array[1:5,:]
         Sv= loaded_array[5:9,:]
-        E = loaded_array[9:13,:]
-        I = loaded_array[13:17,:]
-        R = loaded_array[17:21,:]
-        In= loaded_array[21:,:]
-        return ts, S, Sv, E, I, R, In
+        Svb=loaded_array[9:13,:]
+        E = loaded_array[13:17,:]
+        Ev = loaded_array[17:21,:]
+        Evb = loaded_array[21:25,:]
+        I = loaded_array[25:29,:]
+        Iv = loaded_array[29:33,:]
+        Ivb = loaded_array[33:37,:]
+        R = loaded_array[37:41,:]
+        In= loaded_array[41:,:]
+        return ts, S, Sv, Svb, E, Ev, Evb, I, Iv, Ivb, R, In
 
 
 
@@ -218,16 +228,24 @@ def model_populations(is_vacc):
     asi_N = 820580
     oth_N = 3048470
     N_vec = np.array([[mao_N,pac_N,asi_N,oth_N]]).T
-
+    
+    
+    
     ### vaccination populations
-    # From data
-    mao_N_vacc = 514930
-    pac_N_vacc = 274413
-    asi_N_vacc = 629841
-    oth_N_vacc = 2558007
+    # From Ministry of healoth GitHub
+    mao_N_vacc = 516291
+    pac_N_vacc = 274896
+    asi_N_vacc = 630205
+    oth_N_vacc = 2559349
     N_vec_vacc = np.array([[mao_N_vacc,pac_N_vacc,asi_N_vacc,oth_N_vacc]]).T
     
-    return N_vec, N_vec_vacc
+    mao_N_vacc_boosted = 185674
+    pac_N_vacc_boosted = 111197
+    asi_N_vacc_boosted = 329094
+    oth_N_vacc_boosted = 1575924
+    N_vec_vacc_boosted = np.array([[mao_N_vacc_boosted,pac_N_vacc_boosted,asi_N_vacc_boosted,oth_N_vacc_boosted]]).T
+    
+    return N_vec, N_vec_vacc, N_vec_vacc_boosted
 
 
 def non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data = None):
@@ -267,7 +285,7 @@ def non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data = None):
 
 
 ### Proportionate mixing
-def initial_reproduction_number(N_vec, N_vec_vacc,CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric, gamma):
+def initial_reproduction_number(N_vec, N_vec_vacc, N_vec_vacc_boosted,CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric, gamma):
     
         # Grab transmission rates and assortativity values
         epsilon, a = epsilon_a_vector(CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric,is_old = False)
@@ -283,14 +301,25 @@ def initial_reproduction_number(N_vec, N_vec_vacc,CAR,is_SA1,is_statsnz,is_vacc,
             beta = (1-epsilon)*(a @ a.T)/(a.T @ N_vec) + epsilon * np.diag(a[:,0] / N_vec[:,0])
         
         if is_vacc:
-            beta_pop_matrix = beta*(N_vec - 0.3*N_vec_vacc)/gamma
+            Ss = np.zeros([3,4,1])
+            Ss[0] = N_vec-N_vec_vacc
+            Ss[1] = N_vec_vacc-N_vec_vacc_boosted
+            Ss[2] = N_vec_vacc_boosted
+            beta_pop_matrix = np.zeros([np.shape(beta)[0]*3,np.shape(beta)[1]*3])
+            # Hard coded vaccine effectiveness
+            for i in range(3):
+                for j in range(3):
+                    beta_pop_matrix[i::3,j::3] = [1,0.8,0.55][j]*[1,0.95,0.85][i]*beta*Ss[j]/gamma
+           
+        
         else:
-            beta_pop_matrix = beta*(N_vec)/gamma
+            beta_pop_matrix = beta*N_vec/gamma
             
         
-        F_Vinv = np.zeros([8,8])
-        F_Vinv[0:4,0:4] = beta_pop_matrix
-        F_Vinv[0:4,4:] = beta_pop_matrix
+        beta_len = np.shape(beta_pop_matrix)[0]
+        F_Vinv = np.zeros([beta_len*2,beta_len*2])
+        F_Vinv[0:beta_len,0:beta_len] = beta_pop_matrix
+        F_Vinv[0:beta_len,beta_len:] = beta_pop_matrix
         
         eigs = np.linalg.eigvals(F_Vinv)
         
@@ -438,7 +467,7 @@ def save_image(name_str,CAR,is_statsnz, is_SA1, is_prop, is_non_parametric, is_v
 
 
 
-def SA_import(is_SA1, is_statsnz=True, file_location = '../Data', return_sa_ids = False):
+def SA_import(is_SA1, is_statsnz=True, file_location = '../Data', return_sa_ids = False, return_SA2_names=False):
     '''This function takes in two parameters: is_SA1 and is_statsnz
     is_SA1 has no default value and is a boolean, if true statistical area 1 
     data is imported, if false statistical area 2
@@ -472,6 +501,8 @@ def SA_import(is_SA1, is_statsnz=True, file_location = '../Data', return_sa_ids 
         
         # Grab SA ids
         SA_list = raw_data[:,0].astype('int32').tolist()
+        
+        SA_names = raw_data[:,2].astype('string').tolist()
     else:
         if is_SA1:
             c_data = None # No SA1 data exists for the Te Whatu Ora data
@@ -479,16 +510,18 @@ def SA_import(is_SA1, is_statsnz=True, file_location = '../Data', return_sa_ids 
             filename = f'{file_location}/SA2(Projections_as_at_30_Jun)_2022.csv'
             # columns are: sa2id	eth.mpao	popcount
             # import data
-            raw_data = np.genfromtxt(filename,skip_header=1,dtype="i8,U8,U8,U7,U8,U8,i4,i8,U8,U8,U8", delimiter=',', encoding="utf8")
+            raw_data = np.genfromtxt(filename,skip_header=1,dtype="i8,U8,U32,U7,U8,U8,i4,i8,U8,U8,U8", delimiter=',', encoding="utf8")
             
             # create list to assign index to each SA
             SA_list=[]
+            SA_names = []
             # set up data set
             c_data = np.zeros([len(raw_data)//3,4],dtype='int64')
             # iterate over imported data rows
-            for ID, ignore1, ignore2, eth, ignore4, ignore5, ignore6, population, ignore8, ignore9, ignore10 in raw_data:
+            for ID, ignore1, name, eth, ignore4, ignore5, ignore6, population, ignore8, ignore9, ignore10 in raw_data:
                 if not ID in SA_list: # append to list if ID not yet covered
                     SA_list.append(ID)
+                    SA_names.append(name)
                 idx = SA_list.index(ID) # grab index
                 # put into matrix depending on ethnicity type
                 if eth == 'Maori':
@@ -501,20 +534,28 @@ def SA_import(is_SA1, is_statsnz=True, file_location = '../Data', return_sa_ids 
                     c_data[idx,3] += population
     # Remove zero rows
     SA_list = (np.array(SA_list)[np.any(c_data[0:len(SA_list),:] > 0, axis=1)]).tolist()
+    SA_names = (np.array(SA_names)[np.any(c_data[0:len(SA_names),:] > 0, axis=1)]).tolist()
     c_data = c_data[np.any(c_data > 0, axis=1)]
     # Output
     if return_sa_ids:
-        return SA_list, c_data
+        if return_SA2_names:
+            return SA_list, SA_names, c_data
+        else:
+            return SA_list, c_data
     else:
-        return c_data
+        if return_SA2_names:
+            return SA_names, c_data
+        else:
+            return c_data
 
 
 
-def SEIR_model(t,SEIR, beta, sigma, gamma, imm_decay_rate=0):
+def SEIR_model(t,SEIR, beta, sigma, gamma, imm_decay_rate=0,
+               vacc_acq=0.2, vacc_tran=0.05,boost_acq=0.45,boost_tran=0.15):
     '''Takes as input a time (t), which is unused within the function, and
     a length 20 1D array the first 4 values coresspond to the susceptible 
     unvaccinated group for the 4 ethnic groups, next four to the suceptible
-    vaccinated groups, and so on for E, I, and R as well
+    vaccinated groups, and so on for E, Ev, Evb, I, Iv, Ivb, and R as well
     The expected change in a timespan of 1 if conditions remain the same  for
     each value in the SEIR vector (i.e. the gradient) is calculated using the
     SEIR model
@@ -522,23 +563,40 @@ def SEIR_model(t,SEIR, beta, sigma, gamma, imm_decay_rate=0):
     length 20 1D array'''
     S=SEIR[0:4] 
     Sv=SEIR[4:8]
-    E=SEIR[8:12] 
-    I=SEIR[12:16] 
-    R=SEIR[16:20]
-    In=SEIR[20:]
+    Svb = SEIR[8:12]
+    E=SEIR[12:16] 
+    Ev=SEIR[16:20]
+    Evb=SEIR[20:24]
+    I=SEIR[24:28]
+    Iv=SEIR[28:32]
+    Ivb=SEIR[32:36]
+    R=SEIR[36:40]
+    In=SEIR[40:44]
     ### Equations
-    S_to_E = (beta.T *S).T @ I
+    S_to_E = (beta.T *S).T @ (I + Iv*(1-vacc_tran) + Ivb*(1-boost_tran))
     Sv_to_S = Sv * imm_decay_rate
-    Sv_to_E = (beta.T *Sv).T @ I * (1-0.3) # Vaccination effectiveness
+    Svb_to_S = Svb*imm_decay_rate
+    Sv_to_Ev = (beta.T *Sv).T @ (I + Iv*(1-vacc_tran) + Ivb*(1-boost_tran)) * (1-vacc_acq) # Vaccination effectiveness
+    Svb_to_Evb = (beta.T *Svb).T @ (I + Iv*(1-vacc_tran) + Ivb*(1-boost_tran)) * (1-boost_acq)
     E_to_I = sigma * E
+    Ev_to_Iv = sigma* Ev
+    Evb_to_Ivb = sigma*Evb
     I_to_R = gamma * I
-    R_to_S = R * imm_decay_rate # Make people susceptible again
+    Iv_to_R = gamma * Iv
+    Ivb_to_R = gamma * Ivb
+    R_to_Svb = R * imm_decay_rate # Make people susceptible again
     
     # Calculate migration gradients
-    dS =  Sv_to_S + R_to_S - S_to_E
-    dSv=- Sv_to_S - Sv_to_E
-    dE =   S_to_E + Sv_to_E - E_to_I
-    dI =   E_to_I - I_to_R
-    dR =   I_to_R - R_to_S
-    dIn =  E_to_I
-    return np.concatenate([dS,dSv,dE,dI,dR,dIn])
+    dS      =   Sv_to_S +   Svb_to_S -      S_to_E
+    dSv     =                        -      Sv_to_S  -  Sv_to_Ev
+    dSvb    =   R_to_Svb             -      Svb_to_S  -  Svb_to_Evb
+    dE      =   S_to_E               -      E_to_I
+    dEv     =   Sv_to_Ev             -      Ev_to_Iv
+    dEvb    =   Svb_to_Evb           -      Evb_to_Ivb 
+    dI      =   E_to_I               -      I_to_R
+    dIv     =   Ev_to_Iv             -      Iv_to_R
+    dIvb    =   Evb_to_Ivb           -      Ivb_to_R
+    dR      =   I_to_R +    Iv_to_R  +      Ivb_to_R  -  R_to_Svb
+    dIn     =   E_to_I +    Ev_to_Iv +      Evb_to_Ivb
+    return np.concatenate([dS,dSv,dSvb,dE,dEv,dEvb,dI,dIv,dIvb,dR,dIn])
+
