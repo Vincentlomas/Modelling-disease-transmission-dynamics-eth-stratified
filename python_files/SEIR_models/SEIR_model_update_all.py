@@ -5,6 +5,12 @@ Created on Mon Jul  7 11:17:02 2025
 @author: Vincent Lomas
 
 Main file that will update all results based on input datasets
+
+REQUIRED PACKAGES: 
+    scipy
+    numpy
+    seaborn
+    cycler
 """
 from cycler import cycler
 from thesis_modules import *
@@ -154,12 +160,16 @@ if is_generate_plots:
     
     ### Quantification analysis
     CAR = 50
-    for is_SA1, is_statsnz in [(True,True),(False,True),(False,False)]:
+    for is_SA1, is_statsnz in [(False,False)]:
         quantification_plot(N_vec, CAR, is_SA1, is_statsnz)
         if is_save_generated_plots:
-            save_image('quantification_analysis', CAR, is_statsnz, is_SA1, is_prop=False,is_non_parametric=False, is_vacc=True, counterfactual=3,file_format='png')
-        
-        
+            save_image('quantification_analysis', CAR, is_statsnz, is_SA1, is_prop=False,is_non_parametric=False, is_vacc=True, counterfactual=None,file_format='png')
+    fig,axs = plt.subplots(1,2,figsize=(6.8*15/9,4.8*7.5/9))
+    for i, ax in enumerate(axs):
+        is_SA1, is_statsnz = [(True,True),(False,True)][i]
+        quantification_plot(N_vec, CAR, is_SA1, is_statsnz, ax, ['a) SA1 Quantification','b) SA2 Quantification'][i])
+        if is_save_generated_plots:
+            save_image('quantification_analysis', CAR, is_statsnz, is_SA1, is_prop=False,is_non_parametric=False, is_vacc=True, counterfactual=None,file_format='png')
         
     ### Epsilon variation
     if is_epsilon_variation:
