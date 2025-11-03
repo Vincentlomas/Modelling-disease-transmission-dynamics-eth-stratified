@@ -104,7 +104,7 @@ def initial_group_populations(pop_vec,is_vacc,pop_vec_vacc=np.array([]), pop_vec
     '''takes as input:
         pop_vec: a vector of total populations of different ethnicities
         pop_vec_vacc: a vector of vaccinated populations of different ethnicities
-        pop_vec_vacc: a vector of populations of different ethnicities that recieved a boosted shot
+        pop_vec_vacc_boosted: a vector of populations of different ethnicities that recieved a boosted shot
         initial_exposed: the proportion of people initially exposed to the disease
         initial_infected: the proportion of people initially infected with the disease
         initial_recovered: the proportion of people initially recovered from the disease
@@ -138,6 +138,8 @@ def initial_group_populations(pop_vec,is_vacc,pop_vec_vacc=np.array([]), pop_vec
 
 def load_beta(N_vec,CAR,is_vacc,is_prop,is_non_parametric,
                           is_SA1=None,is_statsnz=None, eth_data = None, is_old = False):
+    '''Function inputs determine which beta to construct and outputs the 
+    relevant beta matrix (a 4x4 numpy array)'''
     
     epsilon,a = epsilon_a_vector(CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric,is_old)
     if is_non_parametric:
@@ -156,7 +158,11 @@ def load_SEIR_results(CAR,is_vacc,is_prop,is_non_parametric,
         Sv: a 2d array of shape (4,len(ts)) of susceptible vaccinated people
         Sv: a 2d array of shape (4,len(ts)) of susceptible vaccinated and boosted people
         E: a 2d array of shape (4,len(ts)) of exposed people
+        Ev: a 2d array of shape (4,len(ts)) of exposed vaccinated people
+        Evb: a 2d array of shape (4,len(ts)) of vaccinated and boosted exposed people
         I: a 2d array of shape (4,len(ts)) of infectious people
+        Iv: a 2d array of shape (4,len(ts)) of infectious vaccinated people
+        Ivb: a 2d array of shape (4,len(ts)) of vaccinated and boosted infectious people
         R: a 2d array of shape (4,len(ts)) of recovered people
         In: a 2d array of shape (4,len(ts)) of the running total of infections'''
     
@@ -221,7 +227,9 @@ def model_populations(is_vacc):
     '''Returns a pair of vectors that contain the populations used for the model
     These are 4D arrays and returned in the order of: total ethnic populations,
     total vaccinated ethnic populations,
-    Order of ethnicities is Maori, Pacific, Asian, European/Other'''
+    Order of ethnicities is Maori, Pacific, Asian, European/Other
+    NOTE THAT IF YOU CHANGE DATASETS THIS WILL NEED TO SUM TO THE POPULATIONS
+    IN THE DATASET FOR UNCONSTRAINED MIXING'''
     
     mao_N = 888840
     pac_N = 359480
@@ -286,48 +294,49 @@ def non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data = None):
 
 ### Proportionate mixing
 def initial_reproduction_number(N_vec, N_vec_vacc, N_vec_vacc_boosted,CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric, gamma):
+    '''Returns the reproductive number associated with a transmission matrix'''
+    # Grab transmission rates and assortativity values
+    epsilon, a = epsilon_a_vector(CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric,is_old = False)
     
-        # Grab transmission rates and assortativity values
-        epsilon, a = epsilon_a_vector(CAR,is_SA1,is_statsnz,is_vacc,is_prop,is_non_parametric,is_old = False)
-        
-        if is_non_parametric: # Handle non-parametric transmission matrix
-            if is_statsnz:
-                eth_data = SA_import(is_SA1, is_statsnz)
-            else:
-                eth_data = None
-            beta = non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data)
-
-        else: # Handle proportionate and assortative transmission matrix
-            beta = (1-epsilon)*(a @ a.T)/(a.T @ N_vec) + epsilon * np.diag(a[:,0] / N_vec[:,0])
-        
-        if is_vacc:
-            Ss = np.zeros([3,4,1])
-            Ss[0] = N_vec-N_vec_vacc
-            Ss[1] = N_vec_vacc-N_vec_vacc_boosted
-            Ss[2] = N_vec_vacc_boosted
-            beta_pop_matrix = np.zeros([np.shape(beta)[0]*3,np.shape(beta)[1]*3])
-            # Hard coded vaccine effectiveness
-            for i in range(3):
-                for j in range(3):
-                    beta_pop_matrix[i::3,j::3] = [1,0.8,0.55][j]*[1,0.95,0.85][i]*beta*Ss[j]/gamma
-           
-        
+    if is_non_parametric: # Handle non-parametric transmission matrix
+        if is_statsnz:
+            eth_data = SA_import(is_SA1, is_statsnz)
         else:
-            beta_pop_matrix = beta*N_vec/gamma
-            
+            eth_data = None
+        beta = non_parametric_per_capita_transmission_matrix(a, N_vec, eth_data)
+
+    else: # Handle proportionate and assortative transmission matrix
+        beta = (1-epsilon)*(a @ a.T)/(a.T @ N_vec) + epsilon * np.diag(a[:,0] / N_vec[:,0])
+    
+    if is_vacc:
+        Ss = np.zeros([3,4,1])
+        Ss[0] = N_vec-N_vec_vacc
+        Ss[1] = N_vec_vacc-N_vec_vacc_boosted
+        Ss[2] = N_vec_vacc_boosted
+        beta_pop_matrix = np.zeros([np.shape(beta)[0]*3,np.shape(beta)[1]*3])
+        # Hard coded vaccine effectiveness
+        for i in range(3):
+            for j in range(3):
+                beta_pop_matrix[i::3,j::3] = [1,0.8,0.55][j]*[1,0.95,0.85][i]*beta*Ss[j]/gamma
+       
+    
+    else:
+        beta_pop_matrix = beta*N_vec/gamma
         
-        beta_len = np.shape(beta_pop_matrix)[0]
-        F_Vinv = np.zeros([beta_len*2,beta_len*2])
-        F_Vinv[0:beta_len,0:beta_len] = beta_pop_matrix
-        F_Vinv[0:beta_len,beta_len:] = beta_pop_matrix
-        
-        eigs = np.linalg.eigvals(F_Vinv)
-        
-        return max(abs(eigs))
+    
+    beta_len = np.shape(beta_pop_matrix)[0]
+    F_Vinv = np.zeros([beta_len*2,beta_len*2])
+    F_Vinv[0:beta_len,0:beta_len] = beta_pop_matrix
+    F_Vinv[0:beta_len,beta_len:] = beta_pop_matrix
+    
+    eigs = np.linalg.eigvals(F_Vinv)
+    
+    return max(abs(eigs))
     
 
 
 def return_attack_rates(CAR):
+    '''Returns the attack rates from the first Omicron wave in NZ 1st Feb - 16th May 2022'''
     if CAR == '4060':
         attack_rate_mao = 23.911 *100/ 40
         attack_rate_pac = 30.528 *100/ 40
