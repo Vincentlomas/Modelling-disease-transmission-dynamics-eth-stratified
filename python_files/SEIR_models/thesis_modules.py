@@ -441,19 +441,20 @@ def save_image(name_str,CAR,is_statsnz, is_SA1, is_prop, is_non_parametric, is_v
             file_path = f'../Images/{vacc_str}Assortative_mixing/{CAR_folder}'
         
         if not counterfactual == -1:
+            counter_fact_str = ''
             if counterfactual == 0:
-                counter_fact_str = 'Equal_max_vaccines'
+                counter_fact_str = 'Equal_max_vaccines/'
             elif counterfactual == 1:
-                counter_fact_str = 'No_vaccines'
+                counter_fact_str = 'No_vaccines/'
             elif counterfactual == 2:
-                counter_fact_str = 'SEIRS_model'
+                counter_fact_str = 'SEIRS_model/'
             elif counterfactual == 3:
-                counter_fact_str = 'No_assortativity'
+                counter_fact_str = 'No_assortativity/'
             elif counterfactual == 4:
-                counter_fact_str = 'Average_transmission_rates'
+                counter_fact_str = 'Average_transmission_rates/'
             elif counterfactual == 5:
-                counter_fact_str = 'Averaged_vaccination_rates'
-            file_path = f'../Images/Counterfactual_scenarios/{counter_fact_str}/'
+                counter_fact_str = 'Averaged_vaccination_rates/'
+            file_path = f'../Images/Counterfactual_scenarios/{counter_fact_str}'
         # If no name passed, save as untitled image
         if name_str == "":
             count=1
