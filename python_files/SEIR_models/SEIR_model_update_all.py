@@ -11,6 +11,7 @@ REQUIRED PACKAGES:
     numpy
     seaborn
     cycler
+    matplotlib
 """
 from cycler import cycler
 from thesis_modules import *
@@ -176,3 +177,4 @@ if is_generate_plots:
         epsilon_variation_plot(CAR,N_vec,is_vacc,N_vec_vacc,N_vec_vacc_boosted, round(1.5*time), sigma,gamma,is_save_generated_plots)
     
     
+
