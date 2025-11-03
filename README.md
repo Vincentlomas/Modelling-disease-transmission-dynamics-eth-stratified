@@ -11,7 +11,7 @@ To do this you will need to install packages using [pip](https://packaging.pytho
 In the SEIR_models folder there is a python file called "SEIR_model_update_all.py" when this file is run it will call on all other files except for Timeseries_analysis.py and SA_statistics_calculation.py. This file will update all result if specified using various parameters:
 
 time is the number of days the simulation is run for
-sigma and gamma are model parameters that control the rate at which people move between the E, I, and R groups
+sigma is the inverse of the incubation period and controls the transition rate from the E group to the I group. gamma is the inverse of the infectious period and controls the transition rate from the I group to the R group. 
 is_vacc determines if vaccination effects are in the model
 
 is_generate_transmission_rates, is_generate_SEIR_results, is_generate_plots, is_save_generated_plots are boolean variables that will run sections of the code to fit transmission rates, run SEIR models, generate plots, and save those plots, respectively.
